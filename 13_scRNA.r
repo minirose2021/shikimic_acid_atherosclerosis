@@ -13,7 +13,6 @@ sceList <- lapply(samples,function(smp){
 })
 sce.all <- merge(x=sceList[[1]],y=sceList[-1])
 
-# 添加分组
 sce <- sce.all
 group <- readRDS("../00_rawdata/GSE159677_group.rds")
 sce$group <- group$group[match(sce$orig.ident,group$sample)]
