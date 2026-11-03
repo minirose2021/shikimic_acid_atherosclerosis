@@ -1,3 +1,60 @@
+library(rms)
+library(pROC)
+library(ggplot2)
+
+load("../09_nomogram/fit.rda")
+genes <- c("ALOX5", "IL6", "NOS2")
+stopifnot(all(genes %in% colnames(d)))
+d$y <- factor(d$y, levels = c("Control", "AS"))
+table(d$y)
+dat <- d[, c(genes, "y")]
+dat <- na.omit(dat)
+
+dd <- datadist(dat)
+options(datadist = "dd")
+fit3 <- lrm(
+  y ~ ALOX5 + IL6 + NOS2,
+  data = dat,
+  x = TRUE,
+  y = TRUE
+)
+
+pred <- plogis(fit3$linear.predictors)
+roc_combined <- roc(
+  response = dat$y,
+  predictor = pred,
+  levels = c("Control", "AS"),
+  direction = "<",
+  quiet = TRUE,
+  ci=T
+)
+cat("Combined AUC:", as.numeric(auc(roc_combined)), "\n")
+print(ci.auc(roc_combined))
+      
+set.seed(123)
+val <- validate(fit3, method = "boot", B = 1000)
+print(val)
+auc_corrected <- (val["Dxy", "index.corrected"] + 1) / 2
+cat("Bootstrap-corrected AUC:",round(auc_corrected, 3), "\n")
+
+p <- ggroc(roc_combined, legacy.axes = T,size = 0.8,color = "firebrick",linewidth = 1.8,alpha=0.9) + 
+  geom_abline(slope = 1,linetype=2)+
+  annotate("text",x=0.7,y=0.2,
+           label=paste0('AUC: ',round(as.numeric(auc(roc_combined)), 3)," (",round(roc_combined$ci[1],3),'~',round(roc_combined$ci[2],3),")"),size=5)+
+  annotate("text",x = 0.65,y = 0.1,label = paste0("Bootstrap-corrected AUC: ",round(auc_corrected, 3)),size = 5) +
+  labs(x = "Specificity",y = "Sensitivity",title = "Model ROC (GSE20129)")+
+  theme(axis.title.y = element_text(size = 18,color = 'black'),
+        axis.title.x =element_text(size = 18,color = 'black'),
+        axis.text.x = element_text(size = 15,color = 'black'),
+        axis.text.y = element_text(size = 15,color = 'black'),
+        legend.position = 'none',
+        panel.grid = element_blank(),
+        panel.border = element_rect(fill=NA),
+        panel.background = element_rect(fill=NA,color = NA),
+        plot.title = element_text(size = 20,hjust = 0.5))
+print(p)
+ggsave(filename = "03.ROC.pdf", width = 5, height = 5)
+ggsave(filename = "03.ROC.png", width = 5, height = 5)
 
 library(rms)
 load("../09_nomogram/fit.rda")
@@ -30,7 +87,6 @@ dev.off()
 png("01.calibrate.png", width=w,height=h, units = "in", res = 300)
 cali_plot()
 dev.off()
-
 
 rm(list = ls()); gc()
 library(magrittr)
@@ -83,13 +139,3 @@ dev.off()
 pdf("02.DCA.pdf",width = w,height = h)
 dca_plot()
 dev.off()
-
-
-
-
-
-
-
-
-
-
