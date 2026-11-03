@@ -1,6 +1,3 @@
-
-
-
 library(magrittr)
 hub_gene <- read.csv("../07_Autodock/01.results_data.csv") %>% filter(Affinity.kcal.mol. < -5)
 train_expr <- readRDS("../00.rawdata/GSE20129_expr_use.rds")
@@ -38,3 +35,38 @@ png(file = "nomogram.png",width = w,height = h, units="in", res=300)
 nomo
 dev.off()
 graphics.off()
+
+beta <- coef(fit)
+
+vcov_mat <- vcov(fit)
+
+SE <- sqrt(diag(vcov_mat))
+
+beta_lower <- beta - 1.96 * SE
+beta_upper <- beta + 1.96 * SE
+
+OR <- exp(beta)
+OR_lower <- exp(beta_lower)
+OR_upper <- exp(beta_upper)
+Z <- beta / SE
+P_value <- 2 * pnorm(abs(Z), lower.tail = FALSE)
+results <- data.frame(
+  Variable = names(beta),
+  Beta = round(beta, 3),
+  # SE = round(SE, 3),
+  Beta_95CI = sprintf(
+    "%.3f - %.3f",
+    beta_lower, beta_upper
+  ),
+  # OR = round(OR, 3),
+  # OR_95CI = sprintf(
+  #   "%.3f - %.3f",
+  #   OR_lower, OR_upper
+  # ),
+  # P_value = signif(P_value, 3),
+  row.names = NULL
+)
+
+results <- results[-1,]
+print(results)
+write.csv(results,"Three_gene_Logistic_coefficients_95CI.csv",row.names = FALSE)
